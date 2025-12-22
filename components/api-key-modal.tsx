@@ -1,43 +1,53 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState, useEffect } from "react"
-import { Key, ExternalLink, ArrowRight } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import type React from "react";
+import { useState, useEffect } from "react";
+import { Key, ExternalLink, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { TOGETHER_LINK } from "@/lib/utils";
 
 interface ApiKeyModalProps {
-  isOpen: boolean
-  onClose: () => void
-  onSubmit: (key: string) => void
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (key: string) => void;
 }
 
 export function ApiKeyModal({ isOpen, onClose, onSubmit }: ApiKeyModalProps) {
-  const [apiKey, setApiKey] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [existingKey, setExistingKey] = useState<string | null>(null)
+  const [apiKey, setApiKey] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [existingKey, setExistingKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined" && isOpen) {
-      const storedKey = localStorage.getItem("together_api_key")
-      setExistingKey(storedKey)
-      if (storedKey && apiKey === "") {
-        setApiKey(storedKey)
-      }
+      const storedKey = localStorage.getItem("together_api_key");
+      setExistingKey(storedKey);
+      setApiKey((current) => {
+        if (storedKey && current === "") {
+          return storedKey;
+        }
+        return current;
+      });
     }
-  }, [isOpen])
+  }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!apiKey.trim()) return
+    e.preventDefault();
+    if (!apiKey.trim()) return;
 
-    setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 500))
-    setIsLoading(false)
-    onSubmit(apiKey.trim())
-    setApiKey("")
-  }
+    setIsLoading(true);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    setIsLoading(false);
+    onSubmit(apiKey.trim());
+    setApiKey("");
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -50,7 +60,9 @@ export function ApiKeyModal({ isOpen, onClose, onSubmit }: ApiKeyModalProps) {
           </div>
 
           <DialogTitle className="text-xl text-center text-white">
-            {existingKey ? "Update your API key" : "Add your API key to continue"}
+            {existingKey
+              ? "Update your API key"
+              : "Add your API key to continue"}
           </DialogTitle>
 
           <DialogDescription className="text-center text-muted-foreground">
@@ -70,7 +82,7 @@ export function ApiKeyModal({ isOpen, onClose, onSubmit }: ApiKeyModalProps) {
           />
 
           <a
-            href="https://together.ai"
+            href={TOGETHER_LINK}
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm text-indigo hover:text-indigo-light flex items-center gap-1.5 transition-colors"
@@ -106,5 +118,5 @@ export function ApiKeyModal({ isOpen, onClose, onSubmit }: ApiKeyModalProps) {
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
