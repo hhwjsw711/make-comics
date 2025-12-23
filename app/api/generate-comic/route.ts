@@ -1,6 +1,7 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server";
+import Together from "together-ai";
 
-const FIXED_DIMENSIONS = { width: 864, height: 1184 }
+const FIXED_DIMENSIONS = { width: 864, height: 1184 };
 
 const STYLE_DESCRIPTIONS: Record<string, string> = {
   noir: "film noir style, high contrast black and white, deep dramatic shadows, 1940s detective aesthetic, heavy bold inking, moody atmospheric lighting",
@@ -14,28 +15,34 @@ const STYLE_DESCRIPTIONS: Record<string, string> = {
     "contemporary digital comic art, smooth gradient coloring, detailed realistic backgrounds, cinematic widescreen composition, graphic novel quality",
   watercolor:
     "painted watercolor comic style, soft blended edges, flowing artistic colors, delicate linework with painted fills, ethereal atmosphere",
-}
+};
 
-async function analyzeCharacterImage(imageBase64: string, apiKey: string, characterNumber: number): Promise<string> {
+async function analyzeCharacterImage(
+  imageBase64: string,
+  apiKey: string,
+  characterNumber: number
+): Promise<string> {
   try {
     // Clean base64 string
-    const base64Data = imageBase64.replace(/^data:image\/[^;]+;base64,/, "")
+    const base64Data = imageBase64.replace(/^data:image\/[^;]+;base64,/, "");
 
-    const response = await fetch("https://api.together.xyz/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo",
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: `Analyze this person for a comic book character reference. Provide a detailed physical description in one paragraph. Include:
+    const response = await fetch(
+      "https://api.together.xyz/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo",
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: `Analyze this person for a comic book character reference. Provide a detailed physical description in one paragraph. Include:
 - Gender and approximate age
 - Face shape (round, oval, square, etc.)
 - Hair: color, length, style, texture
@@ -46,33 +53,38 @@ async function analyzeCharacterImage(imageBase64: string, apiKey: string, charac
 - Current outfit/clothing style and colors
 
 Be VERY specific and detailed. This description will be used to draw this exact person as a comic character. Respond ONLY with the physical description, no other text.`,
-              },
-              {
-                type: "image_url",
-                image_url: {
-                  url: `data:image/jpeg;base64,${base64Data}`,
                 },
-              },
-            ],
-          },
-        ],
-        max_tokens: 500,
-        temperature: 0.3,
-      }),
-    })
+                {
+                  type: "image_url",
+                  image_url: {
+                    url: `data:image/jpeg;base64,${base64Data}`,
+                  },
+                },
+              ],
+            },
+          ],
+          max_tokens: 500,
+          temperature: 0.3,
+        }),
+      }
+    );
 
     if (!response.ok) {
-      console.error(`[v0] Vision API error for character ${characterNumber}:`, await response.text())
-      return `Character ${characterNumber}`
+      console.error(
+        `[v0] Vision API error for character ${characterNumber}:`,
+        await response.text()
+      );
+      return `Character ${characterNumber}`;
     }
 
-    const data = await response.json()
-    const description = data.choices?.[0]?.message?.content || `Character ${characterNumber}`
-    console.log(`[v0] Character ${characterNumber} description:`, description)
-    return description
+    const data = await response.json();
+    const description =
+      data.choices?.[0]?.message?.content || `Character ${characterNumber}`;
+    console.log(`[v0] Character ${characterNumber} description:`, description);
+    return description;
   } catch (error) {
-    console.error(`[v0] Error analyzing character ${characterNumber}:`, error)
-    return `Character ${characterNumber}`
+    console.error(`[v0] Error analyzing character ${characterNumber}:`, error);
+    return `Character ${characterNumber}`;
   }
 }
 
@@ -85,27 +97,34 @@ export async function POST(request: NextRequest) {
       characterImages = [],
       isContinuation = false,
       previousContext = "",
-    } = await request.json()
+    } = await request.json();
 
     if (!prompt || !apiKey) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
     }
 
-    const dimensions = FIXED_DIMENSIONS
-    const styleDesc = STYLE_DESCRIPTIONS[style] || STYLE_DESCRIPTIONS.noir
+    const dimensions = FIXED_DIMENSIONS;
+    const styleDesc = STYLE_DESCRIPTIONS[style] || STYLE_DESCRIPTIONS.noir;
 
     const continuationContext =
       isContinuation && previousContext
         ? `\nCONTINUATION CONTEXT:\nThis is a continuation of an existing story. The previous page showed: ${previousContext}\nMaintain visual consistency with the previous panels. Continue the narrative naturally.\n`
-        : ""
+        : "";
 
-    let characterSection = ""
+    let characterSection = "";
     if (characterImages.length > 0) {
-      console.log(`[v0] Analyzing ${characterImages.length} character image(s)...`)
+      console.log(
+        `[v0] Analyzing ${characterImages.length} character image(s)...`
+      );
 
       const characterDescriptions = await Promise.all(
-        characterImages.map((img: string, index: number) => analyzeCharacterImage(img, apiKey, index + 1)),
-      )
+        characterImages.map((img: string, index: number) =>
+          analyzeCharacterImage(img, apiKey, index + 1)
+        )
+      );
 
       if (characterImages.length === 1) {
         characterSection = `
@@ -116,7 +135,7 @@ CRITICAL INSTRUCTIONS:
 - This EXACT character must appear in ALL 5 panels
 - Draw them in ${style} comic art style but keep their EXACT appearance
 - Same face, same hair, same outfit, same features in every panel
-- They are the PROTAGONIST - center of every scene`
+- They are the PROTAGONIST - center of every scene`;
       } else if (characterImages.length === 2) {
         characterSection = `
 TWO MAIN CHARACTERS (BOTH MUST APPEAR TOGETHER IN MOST PANELS):
@@ -134,7 +153,7 @@ CRITICAL INSTRUCTIONS:
 - If one is female and one is male, keep their genders correct
 - Draw both in ${style} comic art style but preserve their EXACT individual appearances
 - Each character must be immediately recognizable in every panel they appear
-- They are the two protagonists interacting with each other throughout the story`
+- They are the two protagonists interacting with each other throughout the story`;
       }
     }
 
@@ -163,65 +182,75 @@ COMPOSITION:
 - Vary camera angles across panels: close-up, medium shot, wide establishing shot
 - Natural visual flow: left-to-right, top-to-bottom reading order
 - Dynamic character poses with clear expressive acting
-- Detailed backgrounds matching the scene and mood`
+- Detailed backgrounds matching the scene and mood`;
 
-    const fullPrompt = `${systemPrompt}\n\nSTORY:\n${prompt}`
+    const fullPrompt = `${systemPrompt}\n\nSTORY:\n${prompt}`;
 
-    const requestBody = {
-      model: "google/flash-image-2.5",
-      prompt: fullPrompt,
-      width: dimensions.width,
-      height: dimensions.height,
-      n: 1,
-    }
+    console.log("[v0] Generating comic with prompt length:", fullPrompt.length);
 
-    console.log("[v0] Generating comic with prompt length:", fullPrompt.length)
+    const client = new Together({ apiKey });
 
-    const response = await fetch("https://api.together.xyz/v1/images/generations", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestBody),
-    })
+    let response;
+    try {
+      response = await client.images.generate({
+        model: "google/flash-image-2.5",
+        prompt: fullPrompt,
+        width: dimensions.width,
+        height: dimensions.height,
+        n: 1,
+        reference_images: characterImages,
+      });
+    } catch (error) {
+      console.error("[v0] Together AI API error:", error);
 
-    if (!response.ok) {
-      const errorData = await response.json()
-      console.error("[v0] Together AI API error:", errorData)
-
-      if (response.status === 402) {
+      if (error instanceof Error && "status" in error) {
+        const status = (error as any).status;
+        if (status === 402) {
+          return NextResponse.json(
+            {
+              error:
+                "Insufficient API credits. Please add credits to your Together.ai account at https://api.together.ai/settings/billing or update your API key.",
+              errorType: "credit_limit",
+            },
+            { status: 402 }
+          );
+        }
         return NextResponse.json(
           {
-            error:
-              "Insufficient API credits. Please add credits to your Together.ai account at https://api.together.ai/settings/billing or update your API key.",
-            errorType: "credit_limit",
+            error: error.message || `Failed to generate image: ${status}`,
+            errorType: "api_error",
           },
-          { status: 402 },
-        )
+          { status: status || 500 }
+        );
       }
 
       return NextResponse.json(
         {
-          error: errorData.error?.message || `Failed to generate image: ${response.statusText}`,
-          errorType: errorData.error?.type || "api_error",
+          error: `Internal server error: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`,
         },
-        { status: response.status },
-      )
+        { status: 500 }
+      );
     }
 
-    const data = await response.json()
-
-    if (!data.data || !data.data[0] || !data.data[0].url) {
-      return NextResponse.json({ error: "No image URL in response" }, { status: 500 })
+    if (!response.data || !response.data[0] || !response.data[0].url) {
+      return NextResponse.json(
+        { error: "No image URL in response" },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json({ imageUrl: data.data[0].url })
+    return NextResponse.json({ imageUrl: response.data[0].url });
   } catch (error) {
-    console.error("[v0] Error in generate-comic API:", error)
+    console.error("[v0] Error in generate-comic API:", error);
     return NextResponse.json(
-      { error: `Internal server error: ${error instanceof Error ? error.message : "Unknown error"}` },
-      { status: 500 },
-    )
+      {
+        error: `Internal server error: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+      },
+      { status: 500 }
+    );
   }
 }
