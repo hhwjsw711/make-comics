@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import Together from "together-ai";
+import { auth } from "@clerk/nextjs/server";
 import {
   updatePage,
   createStory,
@@ -102,6 +103,15 @@ const STYLE_DESCRIPTIONS: Record<string, string> = {
 
 export async function POST(request: NextRequest) {
   try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
     const {
       storyId,
       prompt,
@@ -112,11 +122,7 @@ export async function POST(request: NextRequest) {
       previousContext = "",
     } = await request.json();
 
-    console.log("Received request:", {
-      storyId,
-      prompt: prompt?.substring(0, 50),
-      characterImagesCount: characterImages.length,
-    });
+    console.log("Received request:", { storyId, prompt: prompt?.substring(0, 50), characterImagesCount: characterImages.length, userId });
 
     if (!prompt || !apiKey) {
       return NextResponse.json(
@@ -129,7 +135,7 @@ export async function POST(request: NextRequest) {
     let story;
 
     if (storyId) {
-      // Create next page for existing story
+      // Create page for existing story
       console.log("Creating page for existing story:", storyId);
       const nextPageNumber = await getNextPageNumber(storyId);
       page = await createPage({
@@ -142,11 +148,11 @@ export async function POST(request: NextRequest) {
       console.log("Page created:", page.id);
     } else {
       // Create new story and first page
-      console.log("Creating new story");
+      console.log("Creating new story for user:", userId);
       story = await createStory({
         title: prompt.length > 50 ? prompt.substring(0, 50) + "..." : prompt,
         description: undefined,
-        userId: undefined,
+        userId: userId,
       });
       console.log("Story created:", story.id);
 

@@ -1,22 +1,33 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { getStoryWithPagesBySlug } from "@/lib/db-actions";
 import { db } from "@/lib/db";
 import { stories } from "@/lib/schema";
+import { eq } from "drizzle-orm";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ storySlug: string }> }
 ) {
   try {
-    const { storySlug: slug } = await params;
-    console.log("API: Fetching story with slug:", slug);
+    const { userId } = await auth();
 
-    // Special case: if slug is "all", return all stories for debugging
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
+    const { storySlug: slug } = await params;
+    console.log("API: Fetching story with slug:", slug, "for user:", userId);
+
+    // Special case: if slug is "all", return user's stories for debugging
     if (slug === "all") {
-      const allStories = await db.select().from(stories);
+      const userStories = await db.select().from(stories).where(eq(stories.userId, userId));
       return NextResponse.json({
-        message: "All stories",
-        stories: allStories.map(s => ({ id: s.id, slug: s.slug, title: s.title }))
+        message: "User stories",
+        stories: userStories.map(s => ({ id: s.id, slug: s.slug, title: s.title }))
       });
     }
 
@@ -28,12 +39,19 @@ export async function GET(
     }
 
     const result = await getStoryWithPagesBySlug(slug);
-    console.log("API: Result found:", !!result);
 
     if (!result) {
       return NextResponse.json(
         { error: "Story not found" },
         { status: 404 }
+      );
+    }
+
+    // Check if the story belongs to the authenticated user
+    if (result.story.userId !== userId) {
+      return NextResponse.json(
+        { error: "Access denied" },
+        { status: 403 }
       );
     }
 
