@@ -10,6 +10,7 @@ import {
 } from "@/lib/db-actions";
 import { freeTierRateLimit } from "@/lib/rate-limit";
 import { COMIC_STYLES } from "@/lib/constants";
+import { uploadImageToS3 } from "@/lib/s3-upload";
 
 const NEW_MODEL = false;
 
@@ -243,9 +244,13 @@ COMPOSITION:
 
     const imageUrl = response.data[0].url;
 
-    // Update page in database
+    // Upload image to S3 for permanent storage
+    const s3Key = `${storyId || story!.id}/page-${page.pageNumber}-${Date.now()}.jpg`;
+    const s3ImageUrl = await uploadImageToS3(imageUrl, s3Key);
+
+    // Update page in database with S3 URL
     try {
-      await updatePage(page.id, imageUrl);
+      await updatePage(page.id, s3ImageUrl);
     } catch (dbError) {
       console.error("Error updating page in database:", dbError);
       return NextResponse.json(
@@ -255,9 +260,9 @@ COMPOSITION:
     }
 
     const responseData = storyId
-      ? { imageUrl, pageId: page.id, pageNumber: page.pageNumber }
+      ? { imageUrl: s3ImageUrl, pageId: page.id, pageNumber: page.pageNumber }
       : {
-          imageUrl,
+          imageUrl: s3ImageUrl,
           storyId: story!.id,
           storySlug: story!.slug,
           pageId: page.id,
