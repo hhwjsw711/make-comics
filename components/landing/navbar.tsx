@@ -5,16 +5,12 @@ import { usePathname } from "next/navigation";
 import { Github, Key, BookOpen, User, Plus } from "lucide-react";
 import Link from "next/link";
 import { ApiKeyModal } from "@/components/api-key-modal";
-import {
-  SignInButton,
-  SignUpButton,
-  SignedIn,
-  SignedOut,
-  UserButton,
-} from "@clerk/nextjs";
+import { SignInButton, SignedIn, SignedOut, useAuth } from "@clerk/nextjs";
 
 export function Navbar() {
   const [showApiModal, setShowApiModal] = useState(false);
+
+  const { isLoaded } = useAuth();
   const pathname = usePathname();
 
   const handleApiKeySubmit = (key: string) => {
@@ -24,10 +20,15 @@ export function Navbar() {
 
   const isOnStoriesPage = pathname === "/stories";
 
+  if (!isLoaded) return null;
+
   return (
     <>
       <nav className="w-full h-14 sm:h-16 border-b border-border/50 flex items-center justify-between px-4 sm:px-6 lg:px-8 z-50 bg-background/80 backdrop-blur-md">
-        <Link href="/" className="flex items-center gap-1 hover:opacity-80 transition-opacity">
+        <Link
+          href="/"
+          className="flex items-center gap-1 hover:opacity-80 transition-opacity"
+        >
           <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center">
             <img
               src="/images/makecomics-logo.png"

@@ -12,15 +12,18 @@ interface CreateButtonProps {
   prompt: string;
   style: string;
   characterFiles: File[];
+  isLoading: boolean;
+  setIsLoading: (loading: boolean) => void;
 }
 
 export function CreateButton({
   prompt,
   style,
   characterFiles,
+  isLoading,
+  setIsLoading,
 }: CreateButtonProps) {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const { toast } = useToast();
   const { uploadToS3 } = useS3Upload();

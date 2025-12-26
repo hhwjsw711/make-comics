@@ -3,7 +3,7 @@ import { stories, pages, type Story, type Page } from './schema';
 import { eq } from 'drizzle-orm';
 import { generateComicSlug } from './slug-generator';
 
-export async function createStory(data: { title: string; description?: string; userId: string }): Promise<Story> {
+export async function createStory(data: { title: string; description?: string; userId: string; style?: string }): Promise<Story> {
   // Generate a unique slug
   let slug = generateComicSlug();
   let attempts = 0;
@@ -31,7 +31,6 @@ export async function createPage(data: {
   pageNumber: number;
   prompt: string;
   characterImageUrls: string[];
-  style: string;
 }): Promise<Page> {
   const [page] = await db.insert(pages).values(data).returning();
   return page;
@@ -60,22 +59,21 @@ export async function getStoryWithPages(storyId: string): Promise<{ story: Story
   };
 }
 
+export async function getStoryById(storyId: string): Promise<Story | null> {
+  const result = await db.select().from(stories).where(eq(stories.id, storyId)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
 export async function getStoryWithPagesBySlug(slug: string): Promise<{ story: Story; pages: Page[] } | null> {
-  console.log("DB: Searching for slug:", slug);
   const storyResult = await db.select().from(stories).where(eq(stories.slug, slug)).limit(1);
-  console.log("DB: Story result count:", storyResult.length);
 
   if (storyResult.length === 0) {
-    console.log("DB: No story found with slug:", slug);
     return null;
   }
 
-  console.log("DB: Found story:", storyResult[0].id, storyResult[0].slug);
   const storyPages = await db.select().from(pages)
     .where(eq(pages.storyId, storyResult[0].id))
     .orderBy(pages.pageNumber);
-
-  console.log("DB: Found pages count:", storyPages.length);
 
   return {
     story: storyResult[0],

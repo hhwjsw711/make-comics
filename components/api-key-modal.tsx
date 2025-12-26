@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState, useEffect } from "react";
-import { Key, ExternalLink, ArrowRight } from "lucide-react";
+import { Key, ExternalLink, ArrowRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -49,6 +49,13 @@ export function ApiKeyModal({ isOpen, onClose, onSubmit }: ApiKeyModalProps) {
     setApiKey("");
   };
 
+  const handleDelete = () => {
+    localStorage.removeItem("together_api_key");
+    setExistingKey(null);
+    setApiKey("");
+    onClose();
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="border border-border/50 rounded-lg bg-background max-w-md">
@@ -67,19 +74,30 @@ export function ApiKeyModal({ isOpen, onClose, onSubmit }: ApiKeyModalProps) {
 
           <DialogDescription className="text-center text-muted-foreground">
             {existingKey
-              ? "Update your Together API key or add a new one."
+              ? "Update your Together API key or add a new one. You can also delete your existing key."
               : "Your first page was free! Add your Together API key to generate more pages."}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-          <Input
-            type="password"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="Enter your API key..."
-            className="bg-secondary border-border/50 text-white placeholder-muted-foreground py-5"
-          />
+          <div className="relative">
+            <Input
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder={existingKey ? "Your current API key" : "Enter your API key..."}
+              className="bg-secondary border-border/50 text-white placeholder-muted-foreground py-5 pr-10"
+            />
+            {apiKey && (
+              <button
+                type="button"
+                onClick={() => setApiKey("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
 
           <a
             href={TOGETHER_LINK}
@@ -95,10 +113,10 @@ export function ApiKeyModal({ isOpen, onClose, onSubmit }: ApiKeyModalProps) {
             <Button
               type="button"
               variant="ghost"
-              onClick={onClose}
+              onClick={existingKey ? handleDelete : onClose}
               className="flex-1 text-muted-foreground hover:text-white hover:bg-secondary"
             >
-              Maybe Later
+              {existingKey ? "Delete API Key" : "Maybe Later"}
             </Button>
             <Button
               type="submit"

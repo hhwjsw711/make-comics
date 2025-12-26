@@ -64,7 +64,7 @@ export default function StoryEditorPage() {
           image: page.generatedImageUrl || "",
           prompt: page.prompt,
           characterUploads: page.characterImageUrls,
-          style: "noir",
+          style: storyData.style || "noir",
           dbId: page.id,
         })))
 
@@ -76,7 +76,7 @@ export default function StoryEditorPage() {
         console.error("Error loading story:", error)
         toast({
           title: "Error loading story",
-          description: "Failed to load the story data.",
+          description: "Failed to load story data.",
           variant: "destructive",
           duration: 4000,
         })
@@ -89,6 +89,20 @@ export default function StoryEditorPage() {
       loadStoryData()
     }
   }, [slug, toast])
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowRight") {
+        setCurrentPage((prev) => (prev < pages.length - 1 ? prev + 1 : prev))
+      } else if (e.key === "ArrowLeft") {
+        setCurrentPage((prev) => (prev > 0 ? prev - 1 : prev))
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [pages.length])
 
   const handleAddPage = () => {
     const storedKey = localStorage.getItem("together_api_key")

@@ -12,6 +12,7 @@ export default function Home() {
   const [prompt, setPrompt] = useState("")
   const [style, setStyle] = useState("noir")
   const [characterFiles, setCharacterFiles] = useState<File[]>([])
+  const [isLoading, setIsLoading] = useState(false)
 
   // Auto-loop through pages every 6 seconds
   useEffect(() => {
@@ -51,10 +52,17 @@ export default function Home() {
                   setStyle={setStyle}
                   characterFiles={characterFiles}
                   setCharacterFiles={setCharacterFiles}
+                  isLoading={isLoading}
                 />
               </div>
               <div className="opacity-0 animate-fade-in-up animation-delay-200">
-                <CreateButton prompt={prompt} style={style} characterFiles={characterFiles} />
+                <CreateButton
+                  prompt={prompt}
+                  style={style}
+                  characterFiles={characterFiles}
+                  isLoading={isLoading}
+                  setIsLoading={setIsLoading}
+                />
               </div>
             </div>
           </div>

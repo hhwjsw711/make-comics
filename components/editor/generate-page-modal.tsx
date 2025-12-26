@@ -1,18 +1,12 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo } from "react"
 import { Upload, X, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { validateFileForUpload, generateFilePreview } from "@/lib/file-utils"
-
-const COMIC_STYLES = [
-  { id: "american-modern", name: "American Modern" },
-  { id: "manga", name: "Manga" },
-  { id: "noir", name: "Noir" },
-  { id: "vintage", name: "Vintage" },
-]
+import { COMIC_STYLES } from "@/lib/constants"
 
 interface GeneratePageModalProps {
   isOpen: boolean
@@ -51,7 +45,11 @@ export function GeneratePageModal({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
 
-  const selectedStyle = previousPageStyle || "noir"
+  const selectedStyleId = previousPageStyle || "noir"
+  const selectedStyle = useMemo(
+    () => COMIC_STYLES.find((s) => s.id === selectedStyleId)?.name || "Noir",
+    [selectedStyleId]
+  )
 
   useEffect(() => {
     if (previousCharacters && previousCharacters.length > 0) {

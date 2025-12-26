@@ -6,101 +6,20 @@ import {
   createStory,
   createPage,
   getNextPageNumber,
+  getStoryById,
 } from "@/lib/db-actions";
 import { freeTierRateLimit } from "@/lib/rate-limit";
+import { COMIC_STYLES } from "@/lib/constants";
 
 const NEW_MODEL = false;
+
 const IMAGE_MODEL = NEW_MODEL
   ? "google/gemini-3-pro-image"
   : "google/flash-image-2.5";
+
 const FIXED_DIMENSIONS = NEW_MODEL
   ? { width: 896, height: 1200 }
   : { width: 864, height: 1184 };
-
-async function analyzeCharacterImage(
-  imageBase64: string,
-  apiKey: string,
-  characterNumber: number
-): Promise<string> {
-  try {
-    // Clean base64 string
-    const base64Data = imageBase64.replace(/^data:image\/[^;]+;base64,/, "");
-
-    const response = await fetch(
-      "https://api.together.xyz/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo",
-          messages: [
-            {
-              role: "user",
-              content: [
-                {
-                  type: "text",
-                  text: `Analyze this person for a comic book character reference. Provide a detailed physical description in one paragraph. Include:
-- Gender and approximate age
-- Face shape (round, oval, square, etc.)
-- Hair: color, length, style, texture
-- Eye color and shape
-- Skin tone
-- Body type/build
-- Any distinctive features (glasses, facial hair, freckles, etc.)
-- Current outfit/clothing style and colors
-
-Be VERY specific and detailed. This description will be used to draw this exact person as a comic character. Respond ONLY with the physical description, no other text.`,
-                },
-                {
-                  type: "image_url",
-                  image_url: {
-                    url: `data:image/jpeg;base64,${base64Data}`,
-                  },
-                },
-              ],
-            },
-          ],
-          max_tokens: 500,
-          temperature: 0.3,
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      console.error(
-        `Vision API error for character ${characterNumber}:`,
-        await response.text()
-      );
-      return `Character ${characterNumber}`;
-    }
-
-    const data = await response.json();
-    const description =
-      data.choices?.[0]?.message?.content || `Character ${characterNumber}`;
-    console.log(`Character ${characterNumber} description:`, description);
-    return description;
-  } catch (error) {
-    console.error(`Error analyzing character ${characterNumber}:`, error);
-    return `Character ${characterNumber}`;
-  }
-}
-
-const STYLE_DESCRIPTIONS: Record<string, string> = {
-  noir: "film noir style, high contrast black and white, deep dramatic shadows, 1940s detective aesthetic, heavy bold inking, moody atmospheric lighting",
-  manga:
-    "Japanese manga style, clean precise black linework, screen tone shading, expressive eyes, dynamic speed lines, black and white with impact effects",
-  superhero:
-    "classic American superhero comic style, bold vibrant colors, dynamic heroic poses, detailed muscular anatomy, Jim Lee and Jack Kirby inspired",
-  vintage:
-    "Golden Age 1950s comic style, visible halftone Ben-Day dots, limited retro color palette, nostalgic warm tones, classic adventure comics",
-  modern:
-    "contemporary digital comic art, smooth gradient coloring, detailed realistic backgrounds, cinematic widescreen composition, graphic novel quality",
-  watercolor:
-    "painted watercolor comic style, soft blended edges, flowing artistic colors, delicate linework with painted fills, ethereal atmosphere",
-};
 
 export async function POST(request: NextRequest) {
   try {
@@ -123,8 +42,6 @@ export async function POST(request: NextRequest) {
       previousContext = "",
     } = await request.json();
 
-    console.log("Received request:", { storyId, prompt: prompt?.substring(0, 50), characterImagesCount: characterImages.length, userId, hasApiKey: !!apiKey });
-
     if (!prompt) {
       return NextResponse.json(
         { error: "Missing required fields" },
@@ -142,7 +59,9 @@ export async function POST(request: NextRequest) {
 
       if (!success) {
         const resetDate = new Date(reset);
-        const timeUntilReset = Math.ceil((reset - Date.now()) / (1000 * 60 * 60 * 24)); // days
+        const timeUntilReset = Math.ceil(
+          (reset - Date.now()) / (1000 * 60 * 60 * 24)
+        ); // days
 
         return NextResponse.json(
           {
@@ -158,7 +77,9 @@ export async function POST(request: NextRequest) {
       finalApiKey = process.env.TOGETHER_API_KEY_DEFAULT;
       if (!finalApiKey) {
         return NextResponse.json(
-          { error: "Server configuration error - default API key not available" },
+          {
+            error: "Server configuration error - default API key not available",
+          },
           { status: 500 }
         );
       }
@@ -168,39 +89,37 @@ export async function POST(request: NextRequest) {
     let story;
 
     if (storyId) {
-      // Create page for existing story
-      console.log("Creating page for existing story:", storyId);
+      const story = await getStoryById(storyId);
+      if (!story) {
+        return NextResponse.json({ error: "Story not found" }, { status: 404 });
+      }
+
       const nextPageNumber = await getNextPageNumber(storyId);
       page = await createPage({
         storyId,
         pageNumber: nextPageNumber,
         prompt,
         characterImageUrls: characterImages,
-        style,
       });
-      console.log("Page created:", page.id);
     } else {
-      // Create new story and first page
-      console.log("Creating new story for user:", userId);
       story = await createStory({
         title: prompt.length > 50 ? prompt.substring(0, 50) + "..." : prompt,
         description: undefined,
         userId: userId,
+        style,
       });
-      console.log("Story created:", story.id);
 
       page = await createPage({
         storyId: story.id,
         pageNumber: 1,
         prompt,
         characterImageUrls: characterImages,
-        style,
       });
-      console.log("First page created:", page.id);
     }
 
     const dimensions = FIXED_DIMENSIONS;
-    const styleDesc = STYLE_DESCRIPTIONS[style] || STYLE_DESCRIPTIONS.noir;
+    const styleInfo = COMIC_STYLES.find((s) => s.id === style);
+    const styleDesc = styleInfo?.prompt || COMIC_STYLES[2].prompt;
 
     const continuationContext =
       isContinuation && previousContext
@@ -268,8 +187,6 @@ COMPOSITION:
 
     const fullPrompt = `${systemPrompt}\n\nSTORY:\n${prompt}`;
 
-    console.log("Generating comic with prompt length:", fullPrompt.length, "using tier:", isUsingFreeTier ? "free" : "paid");
-
     const client = new Together({ apiKey: finalApiKey });
 
     let response;
@@ -329,7 +246,6 @@ COMPOSITION:
     // Update page in database
     try {
       await updatePage(page.id, imageUrl);
-      console.log("Page updated with image:", page.id);
     } catch (dbError) {
       console.error("Error updating page in database:", dbError);
       return NextResponse.json(

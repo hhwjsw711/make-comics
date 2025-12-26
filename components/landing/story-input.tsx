@@ -5,13 +5,7 @@ import { useState } from "react";
 import { useRef, useEffect } from "react";
 import { Upload, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-const COMIC_STYLES = [
-  { id: "american-modern", name: "American Modern" },
-  { id: "manga", name: "Manga" },
-  { id: "noir", name: "Noir" },
-  { id: "vintage", name: "Vintage" },
-];
+import { COMIC_STYLES } from "@/lib/constants";
 
 interface StoryInputProps {
   prompt: string;
@@ -20,6 +14,7 @@ interface StoryInputProps {
   setStyle: (style: string) => void;
   characterFiles: File[];
   setCharacterFiles: (files: File[]) => void;
+  isLoading: boolean;
 }
 
 export function StoryInput({
@@ -29,11 +24,18 @@ export function StoryInput({
   setStyle,
   characterFiles,
   setCharacterFiles,
+  isLoading,
 }: StoryInputProps) {
   const [previews, setPreviews] = useState<string[]>([]);
   const [showPreview, setShowPreview] = useState<number | null>(null);
   const [showStyleDropdown, setShowStyleDropdown] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isLoading) {
+      setShowStyleDropdown(false);
+    }
+  }, [isLoading]);
 
   const handleFiles = (newFiles: FileList | null) => {
     if (!newFiles) return;
@@ -96,7 +98,8 @@ export function StoryInput({
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="A cyberpunk detective standing in neon rain, holding a glowing datapad, moody lighting, noir style..."
-            className="w-full bg-transparent border-none text-sm text-white placeholder-muted-foreground/50 focus:ring-0 focus:outline-none resize-none h-16 leading-relaxed"
+            disabled={isLoading}
+            className="w-full bg-transparent border-none text-sm text-white placeholder-muted-foreground/50 focus:ring-0 focus:outline-none resize-none h-16 leading-relaxed disabled:opacity-50 disabled:cursor-not-allowed"
           />
 
           <div className="mt-3 pt-3 border-t border-border/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-2">
@@ -118,9 +121,10 @@ export function StoryInput({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          removeFile(index);
+                          if (!isLoading) removeFile(index);
                         }}
-                        className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity"
+                        disabled={isLoading}
+                        className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <X className="w-2.5 h-2.5 text-white" />
                       </button>
@@ -128,8 +132,9 @@ export function StoryInput({
                   ))}
                   {characterFiles.length < 2 && (
                     <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="w-8 h-8 rounded-md border border-dashed border-border/50 hover:border-indigo/50 flex items-center justify-center text-muted-foreground hover:text-white transition-colors"
+                      onClick={() => !isLoading && fileInputRef.current?.click()}
+                      disabled={isLoading}
+                      className="w-8 h-8 rounded-md border border-dashed border-border/50 hover:border-indigo/50 flex items-center justify-center text-muted-foreground hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-border/50 disabled:hover:text-muted-foreground"
                     >
                       <Upload className="w-3.5 h-3.5" />
                     </button>
@@ -137,8 +142,9 @@ export function StoryInput({
                 </div>
               ) : (
                 <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-2 text-xs text-muted-foreground hover:text-white transition-colors"
+                  onClick={() => !isLoading && fileInputRef.current?.click()}
+                  disabled={isLoading}
+                  className="flex items-center gap-2 text-xs text-muted-foreground hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-muted-foreground"
                 >
                   <Upload className="w-3.5 h-3.5" />
                   <span>Upload Characters</span>
@@ -153,9 +159,10 @@ export function StoryInput({
               <div className="relative dropdown-container z-60">
                 <button
                   onClick={() => {
-                    setShowStyleDropdown(!showStyleDropdown);
+                    if (!isLoading) setShowStyleDropdown(!showStyleDropdown);
                   }}
-                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-md glass-panel glass-panel-hover transition-all text-xs text-muted-foreground hover:text-white"
+                  disabled={isLoading}
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-md glass-panel glass-panel-hover transition-all text-xs text-muted-foreground hover:text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-muted-foreground"
                 >
                   <svg
                     className="w-3 h-3"

@@ -20,7 +20,6 @@ export async function GET(
     }
 
     const { storySlug: slug } = await params;
-    console.log("API: Fetching story with slug:", slug, "for user:", userId);
 
     // Special case: if slug is "all", return user's stories for debugging
     if (slug === "all") {

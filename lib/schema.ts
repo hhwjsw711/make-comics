@@ -7,7 +7,8 @@ export const stories = pgTable('stories', {
   title: text('title').notNull(),
   slug: text('slug').notNull().unique(),
   description: text('description'),
-  userId: text('user_id').notNull(), // Required Clerk user ID
+  style: text('style').default('noir').notNull(),
+  userId: text('user_id').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
