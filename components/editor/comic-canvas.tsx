@@ -1,6 +1,7 @@
 "use client";
 
-import { RefreshCw, Download, Info, Loader2 } from "lucide-react";
+import { RefreshCw, Share, Info, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 
 interface PageData {
@@ -17,13 +18,25 @@ interface ComicCanvasProps {
   page: PageData;
   pageIndex: number;
   isLoading?: boolean;
+  isOwner?: boolean;
   onInfoClick?: () => void;
   onRedrawClick?: () => void;
   onNextPage?: () => void;
   onPrevPage?: () => void;
 }
 
-export function ComicCanvas({ page, pageIndex, isLoading = false, onInfoClick, onRedrawClick, onNextPage, onPrevPage }: ComicCanvasProps) {
+export function ComicCanvas({
+  page,
+  pageIndex,
+  isLoading = false,
+  isOwner = true,
+  onInfoClick,
+  onRedrawClick,
+  onNextPage,
+  onPrevPage,
+}: ComicCanvasProps) {
+  const { toast } = useToast();
+
   return (
     <main className="flex-1 overflow-auto p-4 md:p-8 flex items-start justify-center relative">
       {/* Dot grid background */}
@@ -77,29 +90,10 @@ export function ComicCanvas({ page, pageIndex, isLoading = false, onInfoClick, o
             </Button>
           )}
 
-          <Button
-            variant="ghost"
-            className="hover:bg-secondary text-muted-foreground hover:text-white gap-2 text-xs h-9 px-3"
-            onClick={onRedrawClick}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <RefreshCw className="w-4 h-4" />
-            )}
-            <span>{isLoading ? "Redrawing..." : "Redraw"}</span>
-          </Button>
-        </div>
-
-        <div className="flex flex-col items-center gap-3 mt-4">
-          {/* <div className="text-xs text-muted-foreground">Page {page.id}</div> */}
-
-          {/* Mobile action buttons */}
-          <div className="flex items-center gap-2 md:hidden">
+          {isOwner && (
             <Button
               variant="ghost"
-              className="hover:bg-secondary text-muted-foreground hover:text-white gap-2 text-xs h-9 px-3 flex-1"
+              className="hover:bg-secondary text-muted-foreground hover:text-white gap-2 text-xs h-9 px-3"
               onClick={onRedrawClick}
               disabled={isLoading}
             >
@@ -110,13 +104,55 @@ export function ComicCanvas({ page, pageIndex, isLoading = false, onInfoClick, o
               )}
               <span>{isLoading ? "Redrawing..." : "Redraw"}</span>
             </Button>
+          )}
+        </div>
+
+        <div className="flex flex-col items-center gap-3 mt-4">
+          {/* <div className="text-xs text-muted-foreground">Page {page.id}</div> */}
+
+          {/* Mobile action buttons */}
+          <div className="flex items-center gap-2 md:hidden">
+            {isOwner && (
+              <Button
+                variant="ghost"
+                className="hover:bg-secondary text-muted-foreground hover:text-white gap-2 text-xs h-9 px-3 flex-1"
+                onClick={onRedrawClick}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4" />
+                )}
+                <span>{isLoading ? "Redrawing..." : "Redraw"}</span>
+              </Button>
+            )}
 
             <Button
               variant="ghost"
               className="hover:bg-secondary text-muted-foreground hover:text-white gap-2 text-xs h-9 px-3 flex-1"
+              onClick={async () => {
+                const url = window.location.href;
+                try {
+                  await navigator.clipboard.writeText(url);
+                  toast({
+                    title: "Link copied!",
+                    description: "Story URL has been copied to your clipboard.",
+                    duration: 2000,
+                  });
+                } catch (err) {
+                  console.error("Failed to copy URL:", err);
+                  toast({
+                    title: "Failed to copy",
+                    description: "Could not copy the URL to clipboard.",
+                    variant: "destructive",
+                    duration: 3000,
+                  });
+                }
+              }}
             >
-              <Download className="w-4 h-4" />
-              <span>Download</span>
+              <Share className="w-4 h-4" />
+              <span>Share</span>
             </Button>
           </div>
         </div>

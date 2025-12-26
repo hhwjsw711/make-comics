@@ -28,6 +28,7 @@ interface StoryData {
   description?: string | null;
   style: string;
   userId?: string | null;
+  isOwner?: boolean;
 }
 
 export default function StoryEditorPage() {
@@ -35,6 +36,7 @@ export default function StoryEditorPage() {
   const slug = params.storySlug as string;
 
   const [story, setStory] = useState<StoryData | null>(null);
+  const [isOwner, setIsOwner] = useState<boolean>(false);
   const [pages, setPages] = useState<PageData[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [showApiModal, setShowApiModal] = useState(false);
@@ -57,9 +59,18 @@ export default function StoryEditorPage() {
         }
 
         const result = await response.json();
-        const { story: storyData, pages: pagesData } = result;
+        console.log("Editor: full API response:", result);
+
+        const {
+          story: storyData,
+          pages: pagesData,
+          isOwner: ownerStatus,
+        } = result;
+
+        console.log("Editor: received story data:", storyData);
 
         setStory(storyData);
+        setIsOwner(ownerStatus ?? false); // Default to false if undefined
         setPages(
           pagesData.map((page: any) => ({
             id: page.pageNumber,
@@ -157,9 +168,7 @@ export default function StoryEditorPage() {
       // Update the current page with the new image
       setPages((prevPages) =>
         prevPages.map((page, index) =>
-          index === currentPage
-            ? { ...page, image: result.imageUrl }
-            : page
+          index === currentPage ? { ...page, image: result.imageUrl } : page
         )
       );
 
@@ -172,7 +181,8 @@ export default function StoryEditorPage() {
       console.error("Error redrawing page:", error);
       toast({
         title: "Failed to redraw page",
-        description: error instanceof Error ? error.message : "Failed to redraw page",
+        description:
+          error instanceof Error ? error.message : "Failed to redraw page",
         variant: "destructive",
         duration: 4000,
       });
@@ -247,9 +257,7 @@ export default function StoryEditorPage() {
       toast({
         title: "Failed to generate page",
         description:
-          error instanceof Error
-            ? error.message
-            : "Failed to generate page",
+          error instanceof Error ? error.message : "Failed to generate page",
         variant: "destructive",
         duration: 4000,
       });
@@ -274,7 +282,11 @@ export default function StoryEditorPage() {
 
   return (
     <div className="h-screen flex flex-col bg-background">
-      <EditorToolbar title={story.title} onContinueStory={handleAddPage} />
+      <EditorToolbar
+        title={story.title}
+        onContinueStory={handleAddPage}
+        isOwner={isOwner}
+      />
 
       <div className="flex-1 flex overflow-hidden">
         <PageSidebar
@@ -284,11 +296,13 @@ export default function StoryEditorPage() {
           onAddPage={handleAddPage}
           loadingPageId={loadingPageId}
           onApiKeyClick={handleApiKeyClick}
+          isOwner={isOwner}
         />
         <ComicCanvas
           page={pages[currentPage]}
           pageIndex={currentPage}
           isLoading={loadingPageId === currentPage}
+          isOwner={isOwner}
           onInfoClick={() => setShowInfoSheet(true)}
           onRedrawClick={handleRedrawPage}
           onNextPage={() =>
