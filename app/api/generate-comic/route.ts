@@ -3,6 +3,7 @@ import Together from "together-ai";
 import { auth } from "@clerk/nextjs/server";
 import {
   updatePage,
+  updateStory,
   createStory,
   createPage,
   getNextPageNumber,
@@ -24,6 +25,8 @@ const IMAGE_MODEL = NEW_MODEL
 const FIXED_DIMENSIONS = NEW_MODEL
   ? { width: 896, height: 1200 }
   : { width: 864, height: 1184 };
+
+const TEXT_MODEL = "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo";
 
 export async function POST(request: NextRequest) {
   try {
@@ -121,6 +124,7 @@ export async function POST(request: NextRequest) {
       referenceImages.push(...storyCharacterImages.slice(-2)); // Take last 2
     } else {
       // New story: no previous page reference
+      // Create story with temporary title, will update with generated title
       story = await createStory({
         title: prompt.length > 50 ? prompt.substring(0, 50) + "..." : prompt,
         description: undefined,
@@ -151,6 +155,85 @@ export async function POST(request: NextRequest) {
 
     const client = new Together({ apiKey: finalApiKey });
 
+    // Generate title and description in parallel with image generation (only for new stories)
+    let titleGenerationPromise: Promise<{
+      title: string;
+      description: string;
+    }> | null = null;
+    if (!storyId) {
+      titleGenerationPromise = (async () => {
+        try {
+          const titlePrompt = `Based on this comic book prompt, generate a compelling title and description for the comic book.
+
+Prompt: "${prompt}"
+Style: ${COMIC_STYLES.find((s) => s.id === style)?.name || style}
+
+Generate:
+1. A catchy, engaging title (maximum 60 characters)
+2. A brief description (2-3 sentences, maximum 200 characters)
+
+Format your response as JSON:
+{
+  "title": "Title here",
+  "description": "Description here"
+}
+
+Only return the JSON, no other text.`;
+
+          const textResponse = await client.chat.completions.create({
+            model: TEXT_MODEL,
+            messages: [
+              {
+                role: "system",
+                content:
+                  "You are a creative assistant that generates compelling comic book titles and descriptions. Always respond with valid JSON only.",
+              },
+              {
+                role: "user",
+                content: titlePrompt,
+              },
+            ],
+            temperature: 0.8,
+            max_tokens: 300,
+          });
+
+          const content = textResponse.choices[0]?.message?.content?.trim();
+          if (!content) {
+            throw new Error("No response from text generation");
+          }
+
+          // Extract JSON from response (in case there's extra text)
+          const jsonMatch = content.match(/\{[\s\S]*\}/);
+          if (!jsonMatch) {
+            throw new Error("No JSON found in response");
+          }
+
+          const parsed = JSON.parse(jsonMatch[0]);
+          const rawTitle = parsed.title?.trim() || (prompt.length > 50 ? prompt.substring(0, 50) + "..." : prompt);
+          const rawDescription = parsed.description?.trim();
+          
+          // Enforce character limits
+          const title = rawTitle.length > 60 ? rawTitle.substring(0, 57) + "..." : rawTitle;
+          const description = rawDescription && rawDescription.length > 200 
+            ? rawDescription.substring(0, 197) + "..." 
+            : rawDescription;
+          
+          return {
+            title,
+            description: description || undefined,
+          };
+        } catch (error) {
+          console.error("Error generating title and description:", error);
+          // Fallback to prompt-based title
+          return {
+            title:
+              prompt.length > 50 ? prompt.substring(0, 50) + "..." : prompt,
+            description: undefined,
+          };
+        }
+      })();
+    }
+
     let response;
     try {
       response = await client.images.generate({
@@ -159,7 +242,8 @@ export async function POST(request: NextRequest) {
         width: dimensions.width,
         height: dimensions.height,
         temperature: 0.1, // Lower temperature for more consistent face matching
-        reference_images: referenceImages.length > 0 ? referenceImages : undefined,
+        reference_images:
+          referenceImages.length > 0 ? referenceImages : undefined,
       });
     } catch (error) {
       console.error("Together AI API error:", error);
@@ -205,8 +289,32 @@ export async function POST(request: NextRequest) {
     const imageUrl = response.data[0].url;
 
     // Upload image to S3 for permanent storage
-    const s3Key = `${storyId || story!.id}/page-${page.pageNumber}-${Date.now()}.jpg`;
+    const s3Key = `${storyId || story!.id}/page-${
+      page.pageNumber
+    }-${Date.now()}.jpg`;
     const s3ImageUrl = await uploadImageToS3(imageUrl, s3Key);
+
+    // Wait for title/description generation if it's a new story
+    let generatedTitle: string | undefined;
+    let generatedDescription: string | undefined;
+    if (titleGenerationPromise) {
+      const titleData = await titleGenerationPromise;
+      generatedTitle = titleData.title;
+      generatedDescription = titleData.description;
+
+      // Update story with generated title and description
+      try {
+        await updateStory(story!.id, {
+          title: generatedTitle,
+          description: generatedDescription,
+        });
+        // Update story object for response
+        story = { ...story, title: generatedTitle, description: generatedDescription };
+      } catch (dbError) {
+        console.error("Error updating story title/description:", dbError);
+        // Continue even if update fails
+      }
+    }
 
     // Update page in database with S3 URL
     try {
@@ -227,6 +335,8 @@ export async function POST(request: NextRequest) {
           storySlug: story!.slug,
           pageId: page.id,
           pageNumber: page.pageNumber,
+          title: generatedTitle || story!.title,
+          description: generatedDescription || story!.description,
         };
 
     return NextResponse.json(responseData);

@@ -42,6 +42,12 @@ export async function updatePage(pageId: string, generatedImageUrl: string): Pro
     .where(eq(pages.id, pageId));
 }
 
+export async function updateStory(storyId: string, data: { title?: string; description?: string }): Promise<void> {
+  await db.update(stories)
+    .set({ ...data, updatedAt: new Date() })
+    .where(eq(stories.id, storyId));
+}
+
 export async function getStoryWithPages(storyId: string): Promise<{ story: Story; pages: Page[] } | null> {
   const storyResult = await db.select().from(stories).where(eq(stories.id, storyId)).limit(1);
 
