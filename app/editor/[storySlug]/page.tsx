@@ -217,6 +217,7 @@ export default function StoryEditorPage() {
       <EditorToolbar
         title={story.title}
         onInfoClick={() => setShowInfoSheet(true)}
+        onContinueStory={handleAddPage}
       />
 
       <div className="flex-1 flex overflow-hidden">
