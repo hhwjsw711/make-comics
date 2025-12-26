@@ -9,6 +9,7 @@ import { useS3Upload } from "next-s3-upload";
 import { useAuth, SignInButton } from "@clerk/nextjs";
 import { COMIC_STYLES } from "@/lib/constants";
 import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
+import { useApiKey } from "@/hooks/use-api-key";
 
 interface ComicCreationFormProps {
   prompt: string;
@@ -36,25 +37,14 @@ export function ComicCreationForm({
   const { toast } = useToast();
   const { uploadToS3 } = useS3Upload();
   const { isSignedIn, isLoaded } = useAuth();
-  const [hasApiKey, setHasApiKey] = useState(false);
+  const [apiKey] = useApiKey();
+  const hasApiKey = !!apiKey;
   const [previews, setPreviews] = useState<string[]>([]);
   const [showPreview, setShowPreview] = useState<number | null>(null);
   const [showStyleDropdown, setShowStyleDropdown] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Check if user has their own API key set
-  useEffect(() => {
-    const checkApiKey = () => {
-      const apiKey = localStorage.getItem("together_api_key");
-      setHasApiKey(!!apiKey);
-    };
-
-    checkApiKey();
-    // Listen for storage changes
-    window.addEventListener("storage", checkApiKey);
-    return () => window.removeEventListener("storage", checkApiKey);
-  }, []);
 
   useEffect(() => {
     if (isLoading) {
@@ -138,7 +128,17 @@ export function ComicCreationForm({
     setLoadingStep(0);
 
     try {
-      const apiKey = localStorage.getItem("together_api_key");
+      if (!apiKey) {
+        toast({
+          title: "API key required",
+          description: "Please add your API key to generate comics.",
+          variant: "destructive",
+          duration: 3000,
+        });
+        setIsLoading(false);
+        return;
+      }
+
       const characterUploads = await Promise.all(
         characterFiles.map((file) => uploadToS3(file).then(({ url }) => url))
       );

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { useApiKey } from "@/hooks/use-api-key";
 import { EditorToolbar } from "@/components/editor/editor-toolbar";
 import { PageSidebar } from "@/components/editor/page-sidebar";
 import { ComicCanvas } from "@/components/editor/comic-canvas";
@@ -48,6 +49,7 @@ export default function StoryEditorPage() {
     string[]
   >([]);
   const { toast } = useToast();
+  const [apiKey, setApiKey] = useApiKey();
 
   // Load story and pages from API
   useEffect(() => {
@@ -123,8 +125,7 @@ export default function StoryEditorPage() {
   }, [pages.length]);
 
   const handleAddPage = () => {
-    const storedKey = localStorage.getItem("together_api_key");
-    if (!storedKey && pages.length >= 1) {
+    if (!apiKey && pages.length >= 1) {
       setShowApiModal(true);
       return;
     }
@@ -132,8 +133,7 @@ export default function StoryEditorPage() {
   };
 
   const handleRedrawPage = async () => {
-    const storedKey = localStorage.getItem("together_api_key");
-    if (!storedKey) {
+    if (!apiKey) {
       setShowApiModal(true);
       return;
     }
@@ -148,7 +148,7 @@ export default function StoryEditorPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": storedKey,
+          "x-api-key": apiKey,
         },
         body: JSON.stringify({
           storyId: story?.slug,
@@ -196,7 +196,7 @@ export default function StoryEditorPage() {
   };
 
   const handleApiKeySubmit = (key: string) => {
-    localStorage.setItem("together_api_key", key);
+    setApiKey(key);
     setShowApiModal(false);
     const wasGenerating = showGenerateModal;
     if (wasGenerating) {
@@ -210,7 +210,6 @@ export default function StoryEditorPage() {
     characterUrls?: string[];
   }) => {
     try {
-      const apiKey = localStorage.getItem("together_api_key");
       if (!apiKey) {
         setShowApiModal(true);
         return;
