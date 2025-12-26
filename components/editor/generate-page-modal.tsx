@@ -346,18 +346,17 @@ export function GeneratePageModal({
                           const imageUrl = char.preview || char.url;
 
                           return (
-                            <div
-                              key={index}
-                              className={`relative group/thumb cursor-pointer ${
-                                isSelected ? "ring-2 ring-indigo-500" : ""
-                              }`}
-                            >
+                            <div key={index} className="relative group/thumb">
                               <button
                                 type="button"
                                 onClick={() => toggleCharacterSelection(index)}
                                 onDoubleClick={() => setShowPreview(imageUrl)}
                                 disabled={isGenerating}
-                                className="w-10 h-10 rounded-md overflow-hidden border-2 border-transparent hover:border-indigo/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed relative"
+                                className={`w-10 h-10 rounded-md overflow-hidden transition-all disabled:opacity-50 disabled:cursor-not-allowed relative ${
+                                  isSelected
+                                    ? "border-2 border-indigo-500"
+                                    : "border-2 border-transparent hover:border-indigo/50"
+                                }`}
                                 title="Click to select/deselect, double-click to preview"
                               >
                                 <img
@@ -367,8 +366,8 @@ export function GeneratePageModal({
                                 />
                                 {/* Selection indicator */}
                                 {isSelected && (
-                                  <div className="absolute top-0 right-0 w-4 h-4 bg-indigo-500 rounded-full flex items-center justify-center pointer-events-none z-10 border-2 border-background">
-                                    <Check className="w-2.5 h-2.5 text-white" />
+                                  <div className="absolute top-0 right-0 w-3.5 h-3.5 bg-indigo-500 rounded-full flex items-center justify-center pointer-events-none z-10 border border-background">
+                                    <Check className="w-2 h-2 text-white" />
                                   </div>
                                 )}
                               </button>
@@ -425,10 +424,9 @@ export function GeneratePageModal({
 
             <div className="text-xs text-muted-foreground/70">
               {isRedrawMode
-                ? "This will replace the current page with a new version. Previous pages and characters are automatically referenced."
-                : selectedCharacterIndices.size > 0
-                ? `${selectedCharacterIndices.size} character(s) selected. Click to toggle selection.`
-                : "No characters selected. Click on characters above to select them, or upload new ones."}
+                ? "Previous pages and characters automatically referenced."
+                : "Previous page automatically referenced. " +
+                  `${selectedCharacterIndices.size} selected characters.`}
             </div>
 
             <Button
