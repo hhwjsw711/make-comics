@@ -13,10 +13,6 @@ export async function GET(
     const authResult = await auth();
     const { userId } = authResult;
 
-    console.log('API: auth result:', authResult);
-    console.log('API: userId type:', typeof userId, 'value:', userId);
-    console.log('API: timestamp:', new Date().toISOString());
-
     const { storySlug: slug } = await params;
 
     // Special case: if slug is "all", return user's stories for debugging
@@ -27,10 +23,17 @@ export async function GET(
           { status: 401 }
         );
       }
-      const userStories = await db.select().from(stories).where(eq(stories.userId, userId));
+      const userStories = await db
+        .select()
+        .from(stories)
+        .where(eq(stories.userId, userId));
       return NextResponse.json({
         message: "User stories",
-        stories: userStories.map(s => ({ id: s.id, slug: s.slug, title: s.title }))
+        stories: userStories.map((s) => ({
+          id: s.id,
+          slug: s.slug,
+          title: s.title,
+        })),
       });
     }
 
@@ -44,10 +47,7 @@ export async function GET(
     const result = await getStoryWithPagesBySlug(slug);
 
     if (!result) {
-      return NextResponse.json(
-        { error: "Story not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Story not found" }, { status: 404 });
     }
 
     // Check if the story belongs to the authenticated user

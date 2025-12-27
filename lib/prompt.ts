@@ -17,7 +17,6 @@ export function buildComicPrompt({
   isAddPage?: boolean;
   previousPages?: Array<{
     prompt: string;
-    characterImages: string[];
   }>;
 }): string {
   const styleInfo = COMIC_STYLES.find((s) => s.id === style);
@@ -31,7 +30,7 @@ export function buildComicPrompt({
   if (isAddPage && previousPages.length > 0) {
     const storyHistory = previousPages
       .map((page, index) => `Page ${index + 1}: ${page.prompt}`)
-      .join('\n');
+      .join("\n");
 
     continuationContext = `\nSTORY CONTINUATION CONTEXT:\nThis is a continuation of an existing comic story. Here are the previous pages:\n${storyHistory}\n\nThe new page should naturally continue this story. Maintain the same characters, setting, and narrative style. Reference previous events and build upon them.\n`;
   }

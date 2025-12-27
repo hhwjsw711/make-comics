@@ -36,7 +36,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { storyId, pageId, prompt, characterImages = [] } = await request.json();
+    const {
+      storyId,
+      pageId,
+      prompt,
+      characterImages = [],
+    } = await request.json();
 
     if (!storyId || !prompt) {
       return NextResponse.json(
@@ -59,7 +64,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Apply rate limiting for free tier
-    const hasApiKey = request.headers.get('x-api-key');
+    const hasApiKey = request.headers.get("x-api-key");
     if (!hasApiKey) {
       const { success, reset } = await freeTierRateLimit.limit(userId);
       if (!success) {
@@ -90,7 +95,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Story not found" }, { status: 404 });
       }
 
-      const existingPage = storyData.pages.find(p => p.id === pageId);
+      const existingPage = storyData.pages.find((p) => p.id === pageId);
       if (!existingPage) {
         return NextResponse.json({ error: "Page not found" }, { status: 404 });
       }
@@ -115,20 +120,14 @@ export async function POST(request: NextRequest) {
 
     // Get previous page image for style consistency (unless it's page 1)
     if (pageNumber > 1) {
-      if (isRedraw) {
-        // For redraw, get all pages and find the previous page's image
-        const storyData = await getStoryWithPagesBySlug(storyId);
-        if (storyData) {
-          const previousPage = storyData.pages.find(p => p.pageNumber === pageNumber - 1);
-          if (previousPage?.generatedImageUrl) {
-            referenceImages.push(previousPage.generatedImageUrl);
-          }
-        }
-      } else {
-        // For new page, use the last page image
-        const lastPageImage = await getLastPageImage(story.id);
-        if (lastPageImage) {
-          referenceImages.push(lastPageImage);
+      // Always use the previous page's image, regardless of new page or redraw
+      const storyData = await getStoryWithPagesBySlug(storyId);
+      if (storyData) {
+        const previousPage = storyData.pages.find(
+          (p) => p.pageNumber === pageNumber - 1
+        );
+        if (previousPage?.generatedImageUrl) {
+          referenceImages.push(previousPage.generatedImageUrl);
         }
       }
     }
@@ -138,9 +137,14 @@ export async function POST(request: NextRequest) {
     referenceImages.push(...characterImages);
 
     // Build the prompt with continuation context
-    const previousPages = pages.map(p => ({
+    // For redraw, only include pages up to the current page being redrawn
+    // For new page, include all existing pages
+    const relevantPages = isRedraw
+      ? pages.filter((p) => p.pageNumber < pageNumber)
+      : pages;
+
+    const previousPages = relevantPages.map((p) => ({
       prompt: p.prompt,
-      characterImages: p.characterImageUrls,
     }));
 
     const fullPrompt = buildComicPrompt({
@@ -151,7 +155,9 @@ export async function POST(request: NextRequest) {
       previousPages,
     });
 
-    const client = new Together({ apiKey: process.env.TOGETHER_API_KEY_DEFAULT });
+    const client = new Together({
+      apiKey: process.env.TOGETHER_API_KEY_DEFAULT,
+    });
 
     let response;
     try {
@@ -160,8 +166,8 @@ export async function POST(request: NextRequest) {
         prompt: fullPrompt,
         width: dimensions.width,
         height: dimensions.height,
-        temperature: 0.1,
-        reference_images: referenceImages.length > 0 ? referenceImages : undefined,
+        reference_images:
+          referenceImages.length > 0 ? referenceImages : undefined,
       });
     } catch (error) {
       console.error("Together AI API error:", error);
