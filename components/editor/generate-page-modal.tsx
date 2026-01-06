@@ -67,6 +67,8 @@ export function GeneratePageModal({
       setShowPreview(null);
       setIsGenerating(false);
 
+
+
       // Initialize characters list with existing ones
       const existingItems: CharacterItem[] = existingCharacters.map((url) => ({
         url,
@@ -326,6 +328,7 @@ export function GeneratePageModal({
                 </div>
 
                 <textarea
+                  autoFocus
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder={

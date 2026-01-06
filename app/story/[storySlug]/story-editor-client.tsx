@@ -82,16 +82,13 @@ export function StoryEditorClient() {
         }
 
         const result = await response.json();
-        console.log("Editor: full API response:", result);
-
+    
         const {
           story: storyData,
           pages: pagesData,
           isOwner: ownerStatus,
         } = result;
-
-        console.log("Editor: received story data:", storyData);
-
+        
         setStory(storyData);
         setIsOwner(ownerStatus ?? false); // Default to false if undefined
         setPages(
