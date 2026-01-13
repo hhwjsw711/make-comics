@@ -51,14 +51,8 @@ export function ComicCreationForm({
   const [creditsRemaining, setCreditsRemaining] = useState<number | null>(null);
   const [showApiModal, setShowApiModal] = useState(false);
 
-  // Initialize style with saved preference or default
-  const [style, setStyle] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(STYLE_STORAGE_KEY);
-      return saved || initialStyle || DEFAULT_STYLE;
-    }
-    return initialStyle || DEFAULT_STYLE;
-  });
+  // Initialize style with initial value, load from localStorage after mount
+  const [style, setStyle] = useState(initialStyle || DEFAULT_STYLE);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -92,6 +86,14 @@ export function ComicCreationForm({
       setPrompt(saved);
     }
   }, []); // Run only on mount
+
+  // Load style preference from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(STYLE_STORAGE_KEY);
+    if (saved) {
+      setStyle(saved);
+    }
+  }, []);
 
   // Save style to localStorage and sync with parent
   useEffect(() => {
