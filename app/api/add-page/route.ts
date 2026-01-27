@@ -145,6 +145,8 @@ export async function POST(request: NextRequest) {
 
     let response;
     try {
+      console.log("Starting image generation...");
+      const startTime = Date.now();
       response = await client.images.generate({
         model: IMAGE_MODEL,
         prompt: fullPrompt,
@@ -153,6 +155,10 @@ export async function POST(request: NextRequest) {
         reference_images:
           referenceImages.length > 0 ? referenceImages : undefined,
       });
+      const endTime = Date.now();
+      const durationMs = endTime - startTime;
+      const durationSeconds = (durationMs / 1000).toFixed(2);
+      console.log(`Image generation completed in ${durationSeconds} seconds`);
     } catch (error) {
       console.error("Together AI API error:", error);
 
