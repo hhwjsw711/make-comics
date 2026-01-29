@@ -9,14 +9,15 @@
 
 ## How AI Generates Comics
 
-The AI references previous pages as visual reference for coherence and uses character faces or images uploaded by the user for additional guidance in generating consistent comic panels.
+We use **Google Flash Image 2.5** to generate comic pages and **Qwen3 80B** to generate story titles and narratives. 
+The AI references previous pages for visual coherence and uses uploaded character images to maintain consistency across panels.
 
 ## Tech stack
 
 - [Next.js 16](https://nextjs.org/) with React 19 and Tailwind CSS
 - [Drizzle ORM](https://orm.drizzle.team/) with [Neon](https://neon.tech) PostgreSQL database
 - [Clerk](https://clerk.com/) for authentication
-- [Together AI](https://together.ai/) for LLM and image generation (Google Gemini/Flash and Meta Llama 3.1)
+- [Together AI](https://together.ai/) for LLM and image generation (Google Flash Image 2.5 and Qwen3 80B)
 - [AWS S3](https://aws.amazon.com/s3/) for image storage
 - [Upstash Redis](https://upstash.com/) for rate limiting
 - [jsPDF](https://github.com/parallax/jsPDF) for PDF generation
