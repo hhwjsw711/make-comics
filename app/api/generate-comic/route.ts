@@ -13,23 +13,19 @@ import {
   deleteStory,
 } from "@/lib/db-actions";
 import { freeTierRateLimit } from "@/lib/rate-limit";
-import { COMIC_STYLES } from "@/lib/constants";
+import {
+  COMIC_STYLES,
+  FAST_MODEL,
+  PRO_MODEL,
+  FAST_DIMENSIONS,
+  PRO_DIMENSIONS,
+} from "@/lib/constants";
 import { uploadImageToS3 } from "@/lib/s3-upload";
 import { buildComicPrompt } from "@/lib/prompt";
 import {
   isContentPolicyViolation,
   getContentPolicyErrorMessage,
 } from "@/lib/utils";
-
-const NEW_MODEL = false;
-
-const IMAGE_MODEL = NEW_MODEL
-  ? "google/gemini-3-pro-image"
-  : "google/flash-image-2.5";
-
-const FIXED_DIMENSIONS = NEW_MODEL
-  ? { width: 896, height: 1200 }
-  : { width: 864, height: 1184 };
 
 const TEXT_MODEL = "Qwen/Qwen3-Next-80B-A3B-Instruct";
 
@@ -40,7 +36,7 @@ export async function POST(request: NextRequest) {
     if (!userId) {
       return NextResponse.json(
         { error: "Authentication required" },
-        { status: 401 },
+        { status: 401 }
       );
     }
 
@@ -52,12 +48,13 @@ export async function POST(request: NextRequest) {
       characterImages = [],
       isContinuation = false,
       previousContext = "",
+      modelMode = "fast",
     } = await request.json();
 
     if (!prompt) {
       return NextResponse.json(
         { error: "Missing required fields" },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -74,7 +71,7 @@ export async function POST(request: NextRequest) {
           {
             error: "Server configuration error - default API key not available",
           },
-          { status: 500 },
+          { status: 500 }
         );
       }
     }
@@ -130,7 +127,10 @@ export async function POST(request: NextRequest) {
     // Use only the character images sent from the frontend
     referenceImages.push(...characterImages);
 
-    const dimensions = FIXED_DIMENSIONS;
+    // Determine which model and dimensions to use based on user preference
+    const useProModel = modelMode === "pro" && usesOwnApiKey;
+    const imageModel = useProModel ? PRO_MODEL : FAST_MODEL;
+    const dimensions = useProModel ? PRO_DIMENSIONS : FAST_DIMENSIONS;
 
     const fullPrompt = buildComicPrompt({
       prompt,
@@ -229,12 +229,12 @@ Only return the JSON, no other text.`;
     try {
       console.log("Starting image generation for ...");
       console.dir({
-        fullPrompt,
+        prompt,
         referenceImages,
       });
       const startTime = Date.now();
       response = await client.images.generate({
-        model: IMAGE_MODEL,
+        model: imageModel,
         prompt: fullPrompt,
         width: dimensions.width,
         height: dimensions.height,
@@ -261,7 +261,7 @@ Only return the JSON, no other text.`;
       } catch (cleanupError) {
         console.error(
           "Error cleaning up DB on image generation failure:",
-          cleanupError,
+          cleanupError
         );
       }
 
@@ -275,7 +275,7 @@ Only return the JSON, no other text.`;
             error: getContentPolicyErrorMessage(),
             errorType: "content_policy",
           },
-          { status: 400 },
+          { status: 400 }
         );
       }
 
@@ -288,7 +288,7 @@ Only return the JSON, no other text.`;
                 "Insufficient API credits. Please add credits to your Together.ai account at https://api.together.ai/settings/billing or update your API key.",
               errorType: "credit_limit",
             },
-            { status: 402 },
+            { status: 402 }
           );
         }
         return NextResponse.json(
@@ -296,7 +296,7 @@ Only return the JSON, no other text.`;
             error: error.message || `Failed to generate image: ${status}`,
             errorType: "api_error",
           },
-          { status: status || 500 },
+          { status: status || 500 }
         );
       }
 
@@ -306,14 +306,14 @@ Only return the JSON, no other text.`;
             error instanceof Error ? error.message : "Unknown error"
           }`,
         },
-        { status: 500 },
+        { status: 500 }
       );
     }
 
     if (!response.data || !response.data[0] || !response.data[0].url) {
       return NextResponse.json(
         { error: "No image URL in response" },
-        { status: 500 },
+        { status: 500 }
       );
     }
 
@@ -358,7 +358,7 @@ Only return the JSON, no other text.`;
       console.error("Error updating page in database:", dbError);
       return NextResponse.json(
         { error: "Failed to save generated image" },
-        { status: 500 },
+        { status: 500 }
       );
     }
 
@@ -369,7 +369,7 @@ Only return the JSON, no other text.`;
       } catch (rateLimitError) {
         console.error(
           "Error applying rate limit after successful generation:",
-          rateLimitError,
+          rateLimitError
         );
         // Don't fail the request if rate limiting fails, just log it
       }
@@ -396,7 +396,7 @@ Only return the JSON, no other text.`;
           error instanceof Error ? error.message : "Unknown error"
         }`,
       },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

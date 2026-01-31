@@ -19,6 +19,7 @@ interface PageSidebarProps {
   onPageSelect: (index: number) => void;
   onAddPage: () => void;
   loadingPageId?: number | null;
+  loadingCountdown?: number;
   onApiKeyClick?: () => void;
   isOwner?: boolean;
 }
@@ -29,6 +30,7 @@ export function PageSidebar({
   onPageSelect,
   onAddPage,
   loadingPageId,
+  loadingCountdown = 0,
   onApiKeyClick,
   isOwner = true,
 }: PageSidebarProps) {
@@ -52,8 +54,11 @@ export function PageSidebar({
             `}
           >
             {loadingPageId === index ? (
-              <div className="w-full h-full flex items-center justify-center">
+              <div className="w-full h-full flex flex-col items-center justify-center">
                 <Loader2 className="w-6 h-6 animate-spin text-white" />
+                {loadingCountdown > 0 && (
+                  <span className="text-[10px] text-white/70 mt-1">{loadingCountdown}s</span>
+                )}
               </div>
             ) : (
               <>

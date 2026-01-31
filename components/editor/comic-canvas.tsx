@@ -19,6 +19,7 @@ interface ComicCanvasProps {
   pageIndex: number;
   totalPages?: number;
   isLoading?: boolean;
+  loadingCountdown?: number;
   isOwner?: boolean;
   onInfoClick?: () => void;
   onRedrawClick?: () => void;
@@ -32,6 +33,7 @@ export function ComicCanvas({
   pageIndex,
   totalPages = 1,
   isLoading = false,
+  loadingCountdown = 0,
   isOwner = true,
   onInfoClick,
   onRedrawClick,
@@ -106,7 +108,18 @@ export function ComicCanvas({
               ) : (
                 <RefreshCw className="w-4 h-4" />
               )}
-              <span>{isLoading ? "Redrawing..." : "Redraw"}</span>
+              <span>
+                {isLoading ? (
+                  <>
+                    Redrawing...
+                    {loadingCountdown > 0 && (
+                      <span className="ml-1 text-muted-foreground">({loadingCountdown}s)</span>
+                    )}
+                  </>
+                ) : (
+                  "Redraw"
+                )}
+              </span>
             </Button>
           )}
 
@@ -159,20 +172,31 @@ export function ComicCanvas({
              )}
 
             {isOwner && (
-              <Button
-                variant="ghost"
-                className="hover:bg-secondary text-muted-foreground hover:text-white gap-2 text-xs h-9 px-3 flex-1"
-                onClick={onRedrawClick}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="w-4 h-4" />
-                )}
-                <span>{isLoading ? "Redrawing..." : "Redraw"}</span>
-              </Button>
-            )}
+               <Button
+                 variant="ghost"
+                 className="hover:bg-secondary text-muted-foreground hover:text-white gap-2 text-xs h-9 px-3 flex-1"
+                 onClick={onRedrawClick}
+                 disabled={isLoading}
+               >
+                 {isLoading ? (
+                   <Loader2 className="w-4 h-4 animate-spin" />
+                 ) : (
+                   <RefreshCw className="w-4 h-4" />
+                 )}
+                 <span>
+                   {isLoading ? (
+                     <>
+                       Redrawing...
+                       {loadingCountdown > 0 && (
+                         <span className="ml-1 text-muted-foreground">({loadingCountdown}s)</span>
+                       )}
+                     </>
+                   ) : (
+                     "Redraw"
+                   )}
+                 </span>
+               </Button>
+             )}
 
              <Button
                variant="ghost"

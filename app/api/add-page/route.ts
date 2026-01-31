@@ -20,15 +20,12 @@ import {
   getContentPolicyErrorMessage,
 } from "@/lib/utils";
 
-const NEW_MODEL = false;
-
-const IMAGE_MODEL = NEW_MODEL
-  ? "google/gemini-3-pro-image"
-  : "google/flash-image-2.5";
-
-const FIXED_DIMENSIONS = NEW_MODEL
-  ? { width: 896, height: 1200 }
-  : { width: 864, height: 1184 };
+import {
+  FAST_MODEL,
+  PRO_MODEL,
+  FAST_DIMENSIONS,
+  PRO_DIMENSIONS,
+} from "@/lib/constants";
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,7 +34,7 @@ export async function POST(request: NextRequest) {
     if (!userId) {
       return NextResponse.json(
         { error: "Authentication required" },
-        { status: 401 },
+        { status: 401 }
       );
     }
 
@@ -46,12 +43,13 @@ export async function POST(request: NextRequest) {
       pageId,
       prompt,
       characterImages = [],
+      modelMode = "fast",
     } = await request.json();
 
     if (!storyId || !prompt) {
       return NextResponse.json(
         { error: "Missing required fields: storyId and prompt" },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -98,7 +96,14 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const dimensions = FIXED_DIMENSIONS;
+    // Check if user is using their own API key
+    const userApiKey = request.headers.get("x-api-key");
+    const hasUserApiKey = !!userApiKey;
+
+    // Determine which model and dimensions to use based on user preference
+    const useProModel = modelMode === "pro" && hasUserApiKey;
+    const imageModel = useProModel ? PRO_MODEL : FAST_MODEL;
+    const dimensions = useProModel ? PRO_DIMENSIONS : FAST_DIMENSIONS;
 
     // Collect reference images: previous page + story characters + current characters
     let referenceImages: string[] = [];
@@ -109,7 +114,7 @@ export async function POST(request: NextRequest) {
       const storyData = await getStoryWithPagesBySlug(storyId);
       if (storyData) {
         const previousPage = storyData.pages.find(
-          (p) => p.pageNumber === pageNumber - 1,
+          (p) => p.pageNumber === pageNumber - 1
         );
         if (previousPage?.generatedImageUrl) {
           referenceImages.push(previousPage.generatedImageUrl);
@@ -148,12 +153,12 @@ export async function POST(request: NextRequest) {
     try {
       console.log("Starting image generation for ...");
       console.dir({
-        fullPrompt,
+        prompt,
         referenceImages,
       });
       const startTime = Date.now();
       response = await client.images.generate({
-        model: IMAGE_MODEL,
+        model: imageModel,
         prompt: fullPrompt,
         width: dimensions.width,
         height: dimensions.height,
@@ -184,7 +189,7 @@ export async function POST(request: NextRequest) {
       } catch (cleanupError) {
         console.error(
           "Error cleaning up DB on image generation failure:",
-          cleanupError,
+          cleanupError
         );
       }
 
@@ -198,7 +203,7 @@ export async function POST(request: NextRequest) {
             error: getContentPolicyErrorMessage(),
             errorType: "content_policy",
           },
-          { status: 400 },
+          { status: 400 }
         );
       }
 
@@ -210,7 +215,7 @@ export async function POST(request: NextRequest) {
               error: "Insufficient API credits.",
               errorType: "credit_limit",
             },
-            { status: 402 },
+            { status: 402 }
           );
         }
         return NextResponse.json(
@@ -218,7 +223,7 @@ export async function POST(request: NextRequest) {
             error: error.message || `Failed to generate image: ${status}`,
             errorType: "api_error",
           },
-          { status: status || 500 },
+          { status: status || 500 }
         );
       }
 
@@ -228,14 +233,14 @@ export async function POST(request: NextRequest) {
             error instanceof Error ? error.message : "Unknown error"
           }`,
         },
-        { status: 500 },
+        { status: 500 }
       );
     }
 
     if (!response.data || !response.data[0] || !response.data[0].url) {
       return NextResponse.json(
         { error: "No image URL in response" },
-        { status: 500 },
+        { status: 500 }
       );
     }
 
@@ -253,7 +258,7 @@ export async function POST(request: NextRequest) {
       } catch (rateLimitError) {
         console.error(
           "Error applying rate limit after successful generation:",
-          rateLimitError,
+          rateLimitError
         );
         // Don't fail the request if rate limiting fails, just log it
       }
@@ -272,7 +277,7 @@ export async function POST(request: NextRequest) {
           error instanceof Error ? error.message : "Unknown error"
         }`,
       },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }
